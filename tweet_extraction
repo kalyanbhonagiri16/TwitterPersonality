@@ -1,0 +1,157 @@
+package com.kaviddiss.storm;
+
+import java.sql.*;
+import java.io.BufferedReader;
+
+import java.io.FileReader;
+import java.io.IOException;
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
+import twitter4j.User;
+import twitter4j.Paging;
+import twitter4j.ResponseList;
+import twitter4j.Status;
+import twitter4j.conf.ConfigurationBuilder;
+
+
+/**
+ * Topology class that sets up the Storm topology for this sample.
+ * Please note that Twitter credentials have to be provided as VM args, otherwise you'll get an Unauthorized error.
+ * @link http://twitter4j.org/en/configuration.html#systempropertyconfiguration
+ */
+public class twitter {
+
+	static final String TOPOLOGY_NAME = "storm-twitter-word-count";
+	
+	static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
+	static final String DB_URL = "jdbc:mysql://127.0.0.1:3306/test";
+
+	public static void main(String[] args) throws TwitterException, IOException, ClassNotFoundException, SQLException {
+		try {
+			
+			Connection conn = null;
+			Statement stmt = null;
+			
+			//STEP 2: Register JDBC driver
+		    Class.forName("com.mysql.jdbc.Driver");
+
+		    //STEP 3: Open a connection
+		    System.out.println("Connecting to database...");
+		    conn = DriverManager.getConnection(DB_URL,"root","root");
+		    
+		  //STEP 4: Execute a query
+		  System.out.println("Creating statement...");
+		  stmt = conn.createStatement();
+		  
+		      
+            ConfigurationBuilder cb = new ConfigurationBuilder();
+            cb.setDebugEnabled(true)
+                .setOAuthConsumerKey("")
+                .setOAuthConsumerSecret("")
+                .setOAuthAccessToken("")
+                .setOAuthAccessTokenSecret("");
+            TwitterFactory tf = new TwitterFactory(cb.build());
+            Twitter twitter = tf.getInstance();
+            twitter.verifyCredentials();
+            
+            
+            
+            int pageno = 1;
+            
+
+            	  try {
+            		  
+            		int hasttag_count = 0;
+            		int useradded_count = 0;
+ 
+            		FileReader reader = new FileReader("D:\\Celebrities.txt");
+                    @SuppressWarnings("resource")
+					BufferedReader bufferedReader = new BufferedReader(reader);
+                    String line;
+                    
+                    while ((line = bufferedReader.readLine()) != null) {
+                    	
+                    System.out.println("\n\n\n");
+                    System.out.printf("Celebrity is %s",line);
+                    System.out.println("\n\n\n");
+                        
+            	    User user = twitter.showUser(line);
+            	    Paging page = new Paging(pageno++, 200);
+            	    System.out.println("Tweets Text");
+            	   // System.out.println(twitter.getUserTimeline(page));
+            	    ResponseList<Status> statuses = twitter.getUserTimeline(user.getName(), page);
+            	    for (Status status : statuses) {
+            	    	 String words = status.getText();
+            	    	 String [] tokens = words.split("[\\s']");
+            	    	 System.out.printf("Word Count %s", tokens.length);
+            	        for(String s:tokens){
+            	             //System.out.println(s);
+            	             char c = s.charAt(0);
+            	             
+            	             
+            	             if(c=='#'){
+            	            	 System.out.println(s);
+            	            	 hasttag_count++;
+            	             }
+            	             if(c=='@'){
+            	            	 useradded_count++;
+            	            	 System.out.println(s);
+            	             }
+            	             
+            	         }
+            	       // System.out.println(status.getText());
+            	    }
+            	    
+            	    
+            	    String sql = "INSERT INTO datascience VALUES (?, ?, ?, ?, ?)";
+            	    
+            	    PreparedStatement statement = conn.prepareStatement(sql);
+            	    
+            	    statement.setLong(1, user.getId());
+            	    statement.setString(2,user.getScreenName());
+            	    statement.setInt(3,user.getFollowersCount());
+            	    statement.setInt(4,0);
+            	    statement.setInt(5,user.getStatusesCount());
+            	    
+            	    statement.executeUpdate();
+            	    
+            	    
+            	    
+            	    System.out.println("\n ***************************    INFORMATION TWITTER PROFILE " + user.getScreenName() + "    ************************* \n\n");
+                    System.out.println("      Followers Count:                    " + user.getFollowersCount() + " \n");
+                    System.out.println("      Tweet Count:           " + user.getStatusesCount() + " \n");
+                    System.out.println("      Name:                  " + user.getName() + " \n");
+                    System.out.println("      Description:           " + user.getDescription() + " \n");
+                    System.out.println("      Joined:                " + user.getCreatedAt() + " \n");
+                    System.out.println("      HastTag Count:                " + hasttag_count + " \n");
+                    System.out.println("      UserAdded Count:                " + useradded_count + " \n");
+                    }
+                    stmt.close();
+                   conn.close(); 
+            	  }
+            	  catch(TwitterException e) {
+
+            	    e.printStackTrace();
+            	  }
+            	
+
+            
+            /*long cursor = -1;
+            PagableResponseList<User> followers;
+            do {
+                 followers = twitter.getFollowersList("screenName", cursor);
+                for (User follower : followers) {
+                    // TODO: Collect top 10 followers here
+                    System.out.println(follower.getName() + " has " + follower.getFollowersCount() + " follower(s)");
+                }
+            } while ((cursor = followers.getNextCursor()) != 0);*/
+            
+           
+        } catch (TwitterException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+	}
