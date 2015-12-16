@@ -1,0 +1,53 @@
+import json
+import csv
+import requests
+
+list0flists = []
+
+
+def retrive_bluemix():
+    for x in range(11, 12):
+        with open(str(x) + ".txt", "r") as myfile:
+            data1 = myfile.read().replace('\n', '')
+            data1.encode('latin-1', 'ignore')
+
+        response = requests.post("https://gateway.watsonplatform.net/personality-insights/api/v2/profile",
+                                 auth=("abc", "xyz"),
+                                 headers={"content-type": "text/plain"},
+                                 data=data1
+                                 )
+
+        print(response)
+        jsonProfile = json.loads(response.text)
+        print(jsonProfile)
+
+        with open(str(x) + '.json', 'w') as outfile:
+            json.dump(jsonProfile, outfile)
+
+
+def json_to_list_of_lists():
+    for x in range(1, 13):
+        with open("D:\\1.SnD\\Studies\\DSProject\\Jsons\\" + str(x) + '.json') as data_file:
+            json_data = json.load(data_file)
+            dict1 = json_data.get('tree')
+            if dict1 is not None:
+                dict2 = (dict1.get('children'))[0]
+                dict3 = (dict2.get('children'))[0]
+                listsingle = []
+                for i in (dict3.get('children')):
+                    listsingle.append(i.get('percentage'))
+                list0flists.append(listsingle)
+                print(listsingle)
+
+
+def export_to_csv():
+    with open('output.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(list0flists)
+
+
+retrive_bluemix()
+json_to_list_of_lists()
+export_to_csv()
+
+
